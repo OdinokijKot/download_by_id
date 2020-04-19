@@ -1,5 +1,6 @@
 #!/bin/bash
 # Блок переменных
+version="1.2.0"
 
 max_request=600 	# Количество последовательных запросов к серверу
 wait_time=120 		# Время перерыва в секундах
@@ -7,7 +8,12 @@ wait_time=120 		# Время перерыва в секундах
 
 # Начальный и конечный ID релизов по умолчанию
 start_id=1
-end_id=9300
+end_id=10500
+
+# Дельта для автоопределения начального и конечного ID
+# Вычитается\добавляется к определённому начальному\конечному ID 
+start_auto_delta=300
+end_auto_delta=10
 
 # Авторизация
 authorization=0 		# Выполнять авторизацию (0\1)
@@ -41,6 +47,7 @@ curl_params_auth="${proxy} -fgLs -b ${cookie_file}"
 curl_params_auth_filename="${proxy} -fgLsI -b ${cookie_file}"
 curl_params_noauth="${proxy} -fgLsOJ"
 curl_params_check="${proxy} -fgLsI"
+curl_auto_end="${proxy} -fgLs -d query=list&page=1&perPage=1&filter=torrents https://www.anilibria.tv/public/api/index.php"
 
 # Curl
 curl_path=""
@@ -86,35 +93,84 @@ function ProgressBar {
 if [ -z "$1" ] || [ -z "$2" ]
 then
   echo "-----------------------------------------------------------------------------"
-  echo "Скрипт для скачивания релизов по ID v.1.1.0 (c) Odinokij_Kot"
+  echo "Скрипт для скачивания релизов по ID v ${version} (c) Odinokij_Kot"
   echo "Использование: `basename ${0}` функция каталог [начальный ID] [конечный ID]"
+  echo
   echo "Функции: D или d - полная закачка;"
   echo "         S или s - синхронизация существующих релизов."
+  echo
+  echo "Начальный и конечный ID:"
+  echo "         число   - явное задание значения ID;"
+  echo "         A или a - автоматическое определение значения ID."
   echo "Если начальный и конечный ID не указаны, они берутся из переменных сценария."
   echo "-----------------------------------------------------------------------------"
   exit 2
+fi
+
+# Проверка наличия curl
+curl_path=`whereis -b curl | awk '{print $2}'`
+
+if [ -z "$curl_path" ]
+then
+  echo "Утилита curl в системе не обнаружена. Установите её и попробуйте опять."
+  exit 3
 fi
 
 # Проверка задания
 
 # Проверка начального и конечного ID
 
-if [ "$3" ]
+if [ "$4" ]
 then
-  (( start_id=$3 ))
-  if [ "$start_id" -eq 0 ]
+  if [ x"$4" = xA ] || [ x"$4" = xa ] 
+  then
+  end_id=0
+  
+    IDs=$(${curl_path} ${curl_auto_end} | sed -e 's/[,{}]/\
+/g' | sed -ne '/^\"url/p;' | sed -e 's/[^0-9]//g')
+
+	if [ x"$IDs" = x ]
+	then 
+	  echo "Ошибка определения конечного ID"
+	  exit 2
+	fi
+
+    for LINE in $IDs
+    do
+     if [ "$LINE" -gt "$end_id" ]
+	 then
+	    (( end_id=LINE ))
+	 fi
+    done
+	
+	(( end_id=end_id+end_auto_delta ))
+	
+  else
+    (( end_id=$4 ))
+  fi
+  
+  if [ "$end_id" -le 0 ]
   then 
-    echo "Ошибка в указании начального ID."
+    echo "Ошибка в указании конечного ID."
     exit 2
   fi
 fi
 
-if [ "$4" ]
+if [ "$3" ]
 then
-  (( end_id=$4 ))
-  if [ "$end_id" -eq 0 ]
+  if [ x"$3" = xA ] || [ x"$3" = xa ] 
+  then
+    (( start_id=(end_id - start_auto_delta) ))
+	if [ "$start_id" -le 0 ]
+	  then (( start_id=1 ))
+	fi
+  else
+    (( start_id=$3 ))
+  fi
+
+  if [ "$start_id" -le 0 ]
   then 
-    echo "Ошибка в указании конечного ID."
+    echo "Ошибка в указании начального ID."
     exit 2
   fi
 fi
@@ -130,15 +186,6 @@ if [ x"$1" != xD ] && [ x"$1" != xd ] && [ x"$1" != xs ] && [ x"$1" != xS ]
 then
   echo "Неверно указана функция."
   exit 2
-fi
-
-# Проверка наличия curl
-curl_path=`whereis -b curl | awk '{print $2}'`
-
-if [ -z "$curl_path" ]
-then
-  echo "Утилита curl в системе не обнаружена. Установите её и попробуйте опять."
-  exit 3
 fi
 
 # Проверка наличия sleep
