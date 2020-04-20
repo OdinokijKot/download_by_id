@@ -1,6 +1,6 @@
 #!/bin/bash
 # Блок переменных
-version="1.2.0"
+version="1.2.1"
 
 max_request=600 	# Количество последовательных запросов к серверу
 wait_time=120 		# Время перерыва в секундах
@@ -18,7 +18,7 @@ end_auto_delta=10
 # Авторизация
 authorization=0 		# Выполнять авторизацию (0\1)
 user_name="" 	# Имя пользователя
-password=""	# Пароль
+password=""		# Пароль
 
 cookie_file=".cookie" 	# Имя файла с куками для авторизации
 
@@ -99,7 +99,12 @@ then
   echo "Функции: D или d - полная закачка;"
   echo "         S или s - синхронизация существующих релизов."
   echo
-  echo "Начальный и конечный ID:"
+  echo "Начальный ID:"
+  echo "         число   - явное задание значения ID;"
+  echo "         A или a - автоматическое определение значения ID;"
+  echo "         L или l - продолжить с последнего скачанного релиза."
+  echo
+  echo "Конечный ID:"
   echo "         число   - явное задание значения ID;"
   echo "         A или a - автоматическое определение значения ID."
   echo "Если начальный и конечный ID не указаны, они берутся из переменных сценария."
@@ -118,7 +123,21 @@ fi
 
 # Проверка задания
 
-# Проверка начального и конечного ID
+# Проверка каталога
+if [ ! -d "$2" ]
+then
+  echo "Каталог $2 отсутствует. Пытаемся его создать."
+  mkdir -p $2
+  if [ ! -d "$2" ]
+  then
+    echo "Не удалось создать каталог $2"
+    exit 4
+  fi
+fi
+
+cd $2
+
+# Проверка конечного ID
 
 if [ "$4" ]
 then
@@ -126,8 +145,7 @@ then
   then
   end_id=0
   
-    IDs=$(${curl_path} ${curl_auto_end} | sed -e 's/[,{}]/\
-/g' | sed -ne '/^\"url/p;' | sed -e 's/[^0-9]//g')
+    IDs=$(${curl_path} ${curl_auto_end} | sed -e 's/[,{}]/\n/g' | sed -ne '/^\"url/p;' | sed -e 's/[^0-9]//g')
 
 	if [ x"$IDs" = x ]
 	then 
@@ -156,23 +174,39 @@ then
   fi
 fi
 
+# Проверка начального ID
 if [ "$3" ]
 then
-  if [ x"$3" = xA ] || [ x"$3" = xa ] 
-  then
-    (( start_id=(end_id - start_auto_delta) ))
-	if [ "$start_id" -le 0 ]
-	  then (( start_id=1 ))
-	fi
-  else
-    (( start_id=$3 ))
-  fi
+	  start_id=0
+	  if [ x"$3" = xA ] || [ x"$3" = xa ] 
+	  then
+			(( start_id=(end_id - start_auto_delta) ))
+			if [ "$start_id" -le 0 ]
+			  then (( start_id=1 ))
+			fi
+	  else
+			if [ x"$3" = xL ] || [ x"$3" = xl ]
+			then
+				for file in [0-9]*.torrent
+				do
+				   tmp=`echo $file | sed -e 's/\..*//'`
 
-  if [ "$start_id" -le 0 ]
-  then 
-    echo "Ошибка в указании начального ID."
-    exit 2
-  fi
+					 if [ "$tmp" -gt "$start_id" ]
+					 then
+						(( start_id=tmp ))
+					 fi
+				done
+				(( start_id+=1 ))
+			else
+				(( start_id=$3 ))
+			fi
+	  fi
+
+	  if [ "$start_id" -le 0 ]
+	  then 
+		echo "Ошибка в указании начального ID."
+		exit 2
+	  fi
 fi
 
 if [ "$start_id" -gt "$end_id" ]
@@ -196,20 +230,6 @@ then
   echo "Утилита sleep в системе не обнаружена. Установите её и попробуйте опять."
   exit 3
 fi
-
-# Проверка каталога
-if [ ! -d "$2" ]
-then
-  echo "Каталог $2 отсутствует. Пытаемся его создать."
-  mkdir -p $2
-  if [ ! -d "$2" ]
-  then
-    echo "Не удалось создать каталог $2"
-    exit 4
-  fi
-fi
-
-cd $2
 
 # Синхронизация релизов
 if [ x"$1" = xs ] || [ x"$1" = xS ]
