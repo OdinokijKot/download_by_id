@@ -1,6 +1,6 @@
 #!/bin/bash
 # Блок переменных
-version="1.2.1"
+version="1.3"
 
 max_request=600 	# Количество последовательных запросов к серверу
 wait_time=120 		# Время перерыва в секундах
@@ -33,6 +33,15 @@ ProgressBar_is_enable=1
 # Для работы напрямую оставте эту переменную пустой или закомментируйте
 #proxy=""
 
+# Загрузка файла с внешними настройками
+SCRIPTNAME=`readlink -e "$0"`
+DIRECTORY=`dirname "$SCRIPTNAME"`
+
+if [ -e $DIRECTORY/config.txt ]
+  then
+		echo "Файл настроек $DIRECTORY/config.txt загружен."
+		source $DIRECTORY/config.txt
+fi
 
 # URL для скачивания релизов с авторизацией и без
 url_auth_start="https://www.anilibria.tv/public/torrent/download.php?id="
@@ -187,16 +196,7 @@ then
 	  else
 			if [ x"$3" = xL ] || [ x"$3" = xl ]
 			then
-				for file in [0-9]*.torrent
-				do
-				   tmp=`echo $file | sed -e 's/\..*//'`
-
-					 if [ "$tmp" -gt "$start_id" ]
-					 then
-						(( start_id=tmp ))
-					 fi
-				done
-				(( start_id+=1 ))
+				(( start_id=`ls -1 [0-9]*.torrent | sort -nrk1 -t "." | head -n1 | cut -d . -f 1`+1 ))
 			else
 				(( start_id=$3 ))
 			fi
