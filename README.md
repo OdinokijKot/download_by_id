@@ -44,7 +44,7 @@
 
 ## Настройки PROXY
 Для работы через proxy-сервер введите его параметры в переменную "proxy"  
-Подробно о синтаксисе написано тут (https://curl.haxx.se/docs/manpage.html#-x)  
+Подробно о синтаксисе написано [тут](https://curl.haxx.se/docs/manpage.html#-x)  
 Например:  
 
 	proxy="--proxy https://proxy-ssl.antizapret.prostovpn.org:3143"
