@@ -1,6 +1,6 @@
 #!/bin/bash
 # Блок переменных
-version="1.3"
+version="1.3.1"
 
 max_request=600 	# Количество последовательных запросов к серверу
 wait_time=120 		# Время перерыва в секундах
@@ -8,7 +8,7 @@ wait_time=120 		# Время перерыва в секундах
 
 # Начальный и конечный ID релизов по умолчанию
 start_id=1
-end_id=12500
+end_id=13500
 
 # Дельта для автоопределения начального и конечного ID
 # Вычитается\добавляется к определённому начальному\конечному ID 
@@ -34,13 +34,12 @@ ProgressBar_is_enable=1
 #proxy=""
 
 # Загрузка файла с внешними настройками
-SCRIPTNAME=`readlink -e "$0"`
-DIRECTORY=`dirname "$SCRIPTNAME"`
 
-if [ -e $DIRECTORY/config.txt ]
+
+if [ -e "$2"/config.txt ]
   then
-		echo "Файл настроек $DIRECTORY/config.txt загружен."
-		source $DIRECTORY/config.txt
+		echo "Файл настроек $2/config.txt загружен."
+		source "$2"/config.txt
 fi
 
 # URL для скачивания релизов с авторизацией и без
@@ -136,7 +135,7 @@ fi
 if [ ! -d "$2" ]
 then
   echo "Каталог $2 отсутствует. Пытаемся его создать."
-  mkdir -p $2
+  mkdir -p "$2"
   if [ ! -d "$2" ]
   then
     echo "Не удалось создать каталог $2"
@@ -144,7 +143,7 @@ then
   fi
 fi
 
-cd $2
+cd "$2"
 
 # Проверка конечного ID
 
